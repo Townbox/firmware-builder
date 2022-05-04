@@ -262,7 +262,7 @@ jobs:
           JOB_BUILD_STATUS: ${{ job.status }}
         run: |
           pushd "immortalwrt"
-          ../buildbot/scripts/report_status
+          ../scripts/report_status
           popd
 
       - name: Cleanup buildroot
