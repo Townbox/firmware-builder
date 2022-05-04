@@ -238,7 +238,19 @@ jobs:
           RSYNC_PASS: ${{ secrets.RSYNC_PASS }}
         run: |
           pushd "immortalwrt"
-          ../scripts/upload_files
+
+          export TOPDIR="$PWD"
+          BIN_DIR="$(make --no-print-directory -C target/linux val.BIN_DIR)"
+          KMOD_DIR="$(make --no-print-directory -C target/linux val.LINUX_VERSION val.LINUX_RELEASE val.LINUX_VERMAGIC | tr '\n' '-' | head -c -1)"
+
+          UL_TARGET="$(awk -F '/' '{print $(NF-1)}' <<< "$BIN_DIR")"
+          UL_SUBTARGET="$(awk -F '/' '{print $NF}' <<< "$BIN_DIR")"
+
+          sshpass -p "$RSYNC_PASS" rsync -ahvHP --delete --exclude "kmods" "$BIN_DIR" "rsync://${RSYNC_USER}@${RSYNC_ADDR}/${BUILDBOT_VERSION}-targets/$UL_TARGET/"
+          sshpass -p "$RSYNC_PASS" rsync -ahvHP --delete "$BIN_DIR/kmods/$KMOD_DIR" "rsync://${RSYNC_USER}@${RSYNC_ADDR}/${BUILDBOT_VERSION}-targets/$UL_TARGET/$UL_SUBTARGET/kmods/"
+
+          sshpass -p "$RSYNC_PASS" rsync -lhprvDHP --exclude "*cache*" "$TOPDIR/dl/" "rsync://${RSYNC_USER}@${RSYNC_ADDR}/dl/"
+
           popd
 
       - name: Update Docker images
