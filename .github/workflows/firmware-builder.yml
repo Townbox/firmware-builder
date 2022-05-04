@@ -82,6 +82,7 @@ jobs:
           repository: immortalwrt/immortalwrt
           path: 'immortalwrt'
           ref: ${{ env.BUILDBOT_BRANCH }}
+          fetch-depth: 0
 
       - name: Set target info
         run: |
