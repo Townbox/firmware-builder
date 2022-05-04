@@ -1,0 +1,13 @@
+diff --git a/Makefile b/Makefile
+index 39ab3ae4a..9943c7a2a 100644
+--- a/Makefile
++++ b/Makefile
+@@ -60,7 +60,7 @@ targetclean: _clean
+ 	rm -rf $(TOOLCHAIN_DIR) $(BUILD_DIR_BASE)/hostpkg $(BUILD_DIR_TOOLCHAIN)
+ 
+ dirclean: targetclean clean
+-	rm -rf $(STAGING_DIR_HOST) $(STAGING_DIR_HOSTPKG) $(BUILD_DIR_BASE)/host
++	rm -rf $(STAGING_DIR_HOSTPKG)
+ 	rm -rf $(TMP_DIR)
+ 	$(MAKE) -C $(TOPDIR)/scripts/config clean
+ 

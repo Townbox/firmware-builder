@@ -1,0 +1,53 @@
+#!/usr/bin/env python3
+#-*-coding:utf-8-*-
+# SPDX-License-Identifier: GPL-3.0-only
+#
+# Copyright (C) 2021 ImmortalWrt.org
+
+import json, os, requests
+from telegram.ext import Updater
+
+build_status = os.getenv('JOB_BUILD_STATUS')
+if build_status == 'success':
+	exit(0)
+
+gh_repo = os.getenv('GITHUB_REPOSITORY')
+gh_token = os.getenv('GH_BOT_PAT')
+job_id = f'Build {os.getenv("BUILDBOT_TARGET")}/{os.getenv("BUILDBOT_SUBTARGET")}'
+run_id = os.getenv('GITHUB_RUN_ID')
+
+tg_chat_id = os.getenv('TG_CHAT_ID')
+tg_bot_token = os.getenv('TG_BOT_TOKEN')
+bot = Updater(tg_bot_token).bot
+
+build_id = str()
+try:
+	run_info = requests.get(f'https://api.github.com/repos/{gh_repo}/actions/runs/{run_id}/jobs',
+		headers={ 'Authorization': f'Bearer {gh_token}' })
+	run_info.encoding='utf-8'
+	run_info = json.loads(run_info.text)
+	if run_info.get('total_count') and (run_info.get('total_count') > 0):
+		for job in run_info['jobs']:
+			if job['name'] == job_id:
+				build_id = job['id']
+	if not build_id:
+		build_id = run_id + ' (failed to get job\_id)'
+except:
+	build_id = run_id + ' (failed to get job\_id)'
+
+os.environ['TOPDIR'] = os.getenv('PWD')
+build_type = os.getenv('BUILDBOT_TYPE')
+build_branch = os.getenv('BUILDBOT_BRANCH')
+build_version = os.getenv('BUILDBOT_VERSION')
+build_arch = os.popen('make --no-print-directory -C target/linux val.ARCH_PACKAGES').read().strip()
+build_target = os.getenv('BUILDBOT_TARGET')
+build_subtarget = os.getenv('BUILDBOT_SUBTARGET').replace('_', '\_')
+
+message = '*ImmortalWrt Buildbot Status Reporter*\n\n'
+message += f'Build id: {build_id}\n'
+message += f'Build branch: {build_branch}\n'
+message += f'Build version: {build_version}\n'
+message += f'Build target: {build_target}/{build_subtarget}\n'
+message += f'Build status: {build_status}'
+
+bot.send_message(tg_chat_id, message, parse_mode='markdown')
