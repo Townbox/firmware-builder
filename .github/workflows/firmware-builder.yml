@@ -29,6 +29,15 @@ jobs:
         with:
           repository: "immortalwrt/immortalwrt"
           ref: ${{ env.BUILDBOT_BRANCH }}
+          fetch-depth: 0
+
+      - name: Checkout tags
+        run: |
+          git fetch origin "$BUILDBOT_BRANCH"
+          case "$VERSION" in \
+          "snapshot"|*-SNAPSHOT) ;; \
+          *) git reset --hard v"${VERSION#openwrt-}" ;; \
+          esac
 
       - name: Generate target list
         id: list_targets
@@ -95,6 +104,7 @@ jobs:
         run: |
           pushd "immortalwrt"
 
+          git fetch origin "$BUILDBOT_BRANCH"
           case "$BUILDBOT_VERSION" in \
           "snapshot"|*-SNAPSHOT) ;; \
           *) git reset --hard v"${BUILDBOT_VERSION#openwrt-}" ;; \
