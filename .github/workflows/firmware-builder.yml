@@ -33,10 +33,9 @@ jobs:
 
       - name: Checkout tags
         run: |
-          git fetch origin "$BUILDBOT_BRANCH"
-          case "$VERSION" in \
+          case "$BUILDBOT_VERSION" in \
           "snapshot"|*-SNAPSHOT) ;; \
-          *) git reset --hard v"${VERSION#openwrt-}" ;; \
+          *) git reset --hard v"${BUILDBOT_VERSION#openwrt-}" ;; \
           esac
 
       - name: Generate target list
@@ -104,7 +103,6 @@ jobs:
         run: |
           pushd "immortalwrt"
 
-          git fetch origin "$BUILDBOT_BRANCH"
           case "$BUILDBOT_VERSION" in \
           "snapshot"|*-SNAPSHOT) ;; \
           *) git reset --hard v"${BUILDBOT_VERSION#openwrt-}" ;; \
