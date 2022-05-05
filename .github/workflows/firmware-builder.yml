@@ -25,7 +25,7 @@ jobs:
 
     steps:
       - name: Checkout ImmortalWrt source tree
-        uses: actions/checkout@v2
+        uses: actions/checkout@v3
         with:
           repository: "immortalwrt/immortalwrt"
           ref: ${{ env.BUILDBOT_BRANCH }}
@@ -226,10 +226,13 @@ jobs:
           ../scripts/create_kmods
           popd
 
-      - name: Generate faillogs
+      - name: Print faillogs
         run: |
           pushd "immortalwrt"
-          ../scripts/create_faillogs
+
+          [ ! -e "./logs/error.txt" ] || cat "./logs/error.txt"
+          [ ! -e "./logs/package/error.txt" ] || cat "./logs/package/error.txt"
+
           popd
 
       - name: Upload files
