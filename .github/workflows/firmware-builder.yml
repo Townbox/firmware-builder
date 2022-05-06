@@ -88,9 +88,9 @@ jobs:
         uses: actions/checkout@v3
         with:
           repository: immortalwrt/immortalwrt
-          path: 'immortalwrt'
           ref: ${{ env.BUILDBOT_BRANCH }}
           fetch-depth: 0
+          path: 'immortalwrt'
 
       - name: Set target info
         run: |
@@ -101,7 +101,11 @@ jobs:
 
       - name: Pull source tree
         run: |
-          pushd "immortalwrt"
+          sudo -E mkdir -p "/immortalwrt"
+          sudo -E chown "$USER":"$GROUPS" "/immortalwrt"
+
+          mv -f "immortalwrt" "/immortalwrt/immortalwrt"
+          pushd "/immortalwrt/immortalwrt"
 
           case "$BUILDBOT_VERSION" in \
           "snapshot"|*-SNAPSHOT) ;; \
@@ -114,9 +118,8 @@ jobs:
           popd
 
       - name: Set build key
+        working-directory: '/immortalwrt/immortalwrt'
         run: |
-          pushd "immortalwrt"
-
           case "$BUILDBOT_BRANCH" in \
           "master") \
             echo -e "${{ secrets.SNAPSHOT_SECKEY }}" > "key-build"; \
@@ -129,23 +132,17 @@ jobs:
             echo -e "${{ secrets.OP1806_PUBKEY }}" > "key-build.pub"; ;; \
           esac
 
-          popd
-
       - name: Patch buildroot
+        working-directory: '/immortalwrt/immortalwrt'
         run: |
-          pushd "immortalwrt"
-
-          [ "$(ls -A "../patches/generic"/*.patch 2>"/dev/null" | wc -l)" -eq "0" ] || \
-            for i in "../patches/generic"/*.patch; do patch -p1 < $i; done
-          [ "$(ls -A "../patches/$BUILDBOT_BRANCH"/*.patch 2>"/dev/null" |  wc -l)" -eq "0" ] || \
-            for i in "../patches/$BUILDBOT_BRANCH"/*.patch; do patch -p1 < $i; done
-
-          popd
+          [ "$(ls -A "$GITHUB_WORKSPACE/patches/generic"/*.patch 2>"/dev/null" | wc -l)" -eq "0" ] || \
+            for i in "$GITHUB_WORKSPACE/patches/generic"/*.patch; do patch -p1 < "$i"; done
+          [ "$(ls -A "$GITHUB_WORKSPACE/patches/$BUILDBOT_BRANCH"/*.patch 2>"/dev/null" |  wc -l)" -eq "0" ] || \
+            for i in "$GITHUB_WORKSPACE/patches/$BUILDBOT_BRANCH"/*.patch; do patch -p1 < "$i"; done
 
       - name: Config buildroot
+        working-directory: '/immortalwrt/immortalwrt'
         run: |
-          pushd "immortalwrt"
-
           echo -e "CONFIG_TARGET_${BUILDBOT_TARGET}=y" | tee ".config"
           echo -e "CONFIG_TARGET_${BUILDBOT_TARGET}_${BUILDBOT_SUBTARGET}=y" | tee -a ".config"
           echo -e "CONFIG_TARGET_MULTI_PROFILE=y" | tee -a ".config"
@@ -170,31 +167,25 @@ jobs:
 
           make defconfig
 
-          popd
-
       - name: Build tools
+        working-directory: '/immortalwrt/immortalwrt'
         run: |
-          pushd "immortalwrt"
           make tools/install -j$(nproc) || make tools/install V=s
-          popd
 
       - name: Build toolchain
+        working-directory: '/immortalwrt/immortalwrt'
         run: |
-          pushd "immortalwrt"
           make toolchain/install -j$(nproc) || make toolchain/install V=s
-          popd
 
       - name: Build target
+        working-directory: '/immortalwrt/immortalwrt'
         run: |
-          pushd "immortalwrt"
           make target/compile -j$(nproc) IGNORE_ERRORS=1 || \
             make target/compile IGNORE_ERRORS=1 V=s
-          popd
 
       - name: Build packages
+        working-directory: '/immortalwrt/immortalwrt'
         run: |
-          pushd "immortalwrt"
-
           make package/compile -j$(nproc) IGNORE_ERRORS=1 || \
             make package/compile IGNORE_ERRORS=1 V=s
 
@@ -202,55 +193,44 @@ jobs:
 
           make package/index V=s
 
-          popd
-
       - name: Build firmware
+        working-directory: '/immortalwrt/immortalwrt'
         run: |
-          pushd "immortalwrt"
           make target/install -j$(nproc) || make target/install V=s
-          popd
 
       - name: Generate buildinfo
+        working-directory: '/immortalwrt/immortalwrt'
         run: |
-          pushd "immortalwrt"
           make buildinfo V=s
-          popd
 
       - name: Generate JSON overview
+        working-directory: '/immortalwrt/immortalwrt'
         run: |
-          pushd "immortalwrt"
           make json_overview_image_info V=s
-          popd
 
       - name: Generate HASH
+        working-directory: '/immortalwrt/immortalwrt'
         run: |
-          pushd "immortalwrt"
           make checksum V=s
-          popd
 
       - name: Generate kmods feed
+        working-directory: '/immortalwrt/immortalwrt'
         run: |
-          pushd "immortalwrt"
-          ../scripts/create_kmods
-          popd
+          "$GITHUB_WORKSPACE"/scripts/create_kmods
 
       - name: Print faillogs
+        working-directory: '/immortalwrt/immortalwrt'
         run: |
-          pushd "immortalwrt"
-
           [ ! -e "./logs/error.txt" ] || cat "./logs/error.txt"
           [ ! -e "./logs/package/error.txt" ] || cat "./logs/package/error.txt"
 
-          popd
-
       - name: Upload files
+        working-directory: '/immortalwrt/immortalwrt'
         env:
           RSYNC_ADDR: ${{ secrets.RSYNC_ADDR }}
           RSYNC_USER: ${{ secrets.RSYNC_USER }}
           RSYNC_PASS: ${{ secrets.RSYNC_PASS }}
         run: |
-          pushd "immortalwrt"
-
           export TOPDIR="$PWD"
           BIN_DIR="$(make --no-print-directory -C target/linux val.BIN_DIR)"
           KMOD_DIR="$(make --no-print-directory -C target/linux val.LINUX_VERSION val.LINUX_RELEASE val.LINUX_VERMAGIC | tr '\n' '-' | head -c -1)"
@@ -263,9 +243,8 @@ jobs:
 
           sshpass -p "$RSYNC_PASS" rsync -lhprvD --exclude "*cache*" "$TOPDIR/dl/" "rsync://${RSYNC_USER}@${RSYNC_ADDR}/dl/"
 
-          popd
-
       - name: Update Docker images
+        working-directory: '/immortalwrt/immortalwrt'
         env:
           FWSELECTOR_REFRESH_URL: ${{ secrets.FWSELECTOR_REFRESH_URL }}
           FWSELECTOR_REFRESH_TOKEN: ${{ secrets.FWSELECTOR_REFRESH_TOKEN }}
@@ -273,25 +252,24 @@ jobs:
           GH_DOCKER_REPO: 'immortalwrt/docker'
           GH_DOCKER_REPO_BRANCH: 'master'
         run: |
-          pushd "immortalwrt"
-          ../scripts/update_docker
-          popd
+          "$GITHUB_WORKSPACE"/scripts/update_docker
 
       - name: Report status to Telegram group
         if: ${{ always() }}
+        working-directory: '/immortalwrt/immortalwrt'
         env:
           GH_BOT_PAT: ${{ secrets.GH_BOT_PAT }}
           TG_CHAT_ID: ${{ secrets.TG_CHAT_ID }}
           TG_BOT_TOKEN: ${{ secrets.TG_BOT_TOKEN }}
           JOB_BUILD_STATUS: ${{ job.status }}
         run: |
-          pushd "immortalwrt"
-          ../scripts/report_status
-          popd
+          "$GITHUB_WORKSPACE"/scripts/report_status
 
       - name: Cleanup buildroot
         if: ${{ always() }}
+        working-directory: '/immortalwrt/immortalwrt'
         run: |
-          pushd "immortalwrt"
           make distclean V=s
-          popd
+
+          cd ../
+          mv -f "immortalwrt" "$GITHUB_WORKSPACE/immortalwrt"
