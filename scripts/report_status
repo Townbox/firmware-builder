@@ -13,7 +13,7 @@ if build_status == 'success':
 
 gh_repo = os.getenv('GITHUB_REPOSITORY')
 gh_token = os.getenv('GH_BOT_PAT')
-job_id = f'Build {os.getenv("BUILDBOT_TARGET")}/{os.getenv("BUILDBOT_SUBTARGET")}'
+job_id = f'Build firmware for {os.getenv("BUILDBOT_TARGET")}/{os.getenv("BUILDBOT_SUBTARGET")}'
 run_id = os.getenv('GITHUB_RUN_ID')
 
 tg_chat_id = os.getenv('TG_CHAT_ID')
