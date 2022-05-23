@@ -96,8 +96,9 @@ jobs:
         run: |
           BUILDBOT_TARGET="$(echo ${{ matrix.targets }} | cut -d "/" -f 1)"
           BUILDBOT_SUBTARGET="$(echo ${{ matrix.targets }} | cut -d "/" -f 2)"
-          echo "BUILDBOT_TARGET=$BUILDBOT_TARGET" | tee -a "$GITHUB_ENV"
-          echo "BUILDBOT_SUBTARGET=$BUILDBOT_SUBTARGET" | tee -a "$GITHUB_ENV"
+          echo -e "BUILDBOT_TARGET=$BUILDBOT_TARGET" | tee -a "$GITHUB_ENV"
+          echo -e "BUILDBOT_SUBTARGET=$BUILDBOT_SUBTARGET" | tee -a "$GITHUB_ENV"
+          echo -e "BUILDBOT_TARGET_SUBTARGET=$BUILDBOT_TARGET-$BUILDBOT_SUBTARGET" | tee -a "$GITHUB_ENV"
 
       - name: Pull source tree
         run: |
@@ -234,6 +235,8 @@ jobs:
           export TOPDIR="$PWD"
           BIN_DIR="$(make --no-print-directory -C target/linux val.BIN_DIR)"
           KMOD_DIR="$(make --no-print-directory -C target/linux val.LINUX_VERSION val.LINUX_RELEASE val.LINUX_VERMAGIC | tr '\n' '-' | head -c -1)"
+          PKG_ARCH="$(make --no-print-directory -C target/linux val.ARCH_PACKAGES)"
+          echo -e "PKG_ARCH=$PKG_ARCH" | tee -a "$GITHUB_ENV"
 
           UL_TARGET="$(awk -F '/' '{print $(NF-1)}' <<< "$BIN_DIR")"
           UL_SUBTARGET="$(awk -F '/' '{print $NF}' <<< "$BIN_DIR")"
@@ -243,16 +246,36 @@ jobs:
 
           sshpass -p "$RSYNC_PASS" rsync -lhprvD --exclude "*cache*" "$TOPDIR/dl/" "rsync://${RSYNC_USER}@${RSYNC_ADDR}/dl/"
 
-      - name: Update Docker images
-        working-directory: '/immortalwrt/immortalwrt'
-        env:
-          FWSELECTOR_REFRESH_URL: ${{ secrets.FWSELECTOR_REFRESH_URL }}
-          FWSELECTOR_REFRESH_TOKEN: ${{ secrets.FWSELECTOR_REFRESH_TOKEN }}
-          GH_BOT_PAT: ${{ secrets.GH_BOT_PAT }}
-          GH_DOCKER_REPO: 'immortalwrt/docker'
-          GH_DOCKER_REPO_BRANCH: 'master'
-        run: |
-          "$GITHUB_WORKSPACE"/scripts/update_docker
+      - name: Update SDK docker image
+        uses: benc-uk/workflow-dispatch@v1
+        with:
+          workflow: 'Build SDK images (trigger)'
+          repo: 'immortalwrt/docker'
+          ref: 'master'
+          token: '${{ secrets.GH_BOT_PAT }}'
+          inputs: '{ "branch": "${{ env.BUILDBOT_BRANCH }}", "version": "${{ env.BUILDBOT_VERSION }}", "target": "${{ env.BUILDBOT_TARGET_SUBTARGET }}", "arch": "${{ env.PKG_ARCH }}" }'
+
+      - name: Update IB docker image
+        uses: benc-uk/workflow-dispatch@v1
+        with:
+          workflow: 'Build ImageBuilder images (trigger)'
+          repo: 'immortalwrt/docker'
+          ref: 'master'
+          token: '${{ secrets.GH_BOT_PAT }}'
+          inputs: '{ "branch": "${{ env.BUILDBOT_BRANCH }}", "version": "${{ env.BUILDBOT_VERSION }}", "target": "${{ env.BUILDBOT_TARGET_SUBTARGET }}", "arch": "${{ env.PKG_ARCH }}" }'
+
+      - name: Update rootfs docker image
+        if: contains(fromJson('["armvirt-32", "armvirt-64", "malta-be", "x86-generic", "x86-geode", "x86-64"]'), env.BUILDBOT_TARGET_SUBTARGET)
+        uses: benc-uk/workflow-dispatch@v1
+        with:
+          workflow: 'Build rootfs images (trigger)'
+          repo: 'immortalwrt/docker'
+          ref: 'master'
+          token: '${{ secrets.GH_BOT_PAT }}'
+          inputs: '{ "branch": "${{ env.BUILDBOT_BRANCH }}", "version": "${{ env.BUILDBOT_VERSION }}", "target": "${{ env.BUILDBOT_TARGET_SUBTARGET }}", "arch": "${{ env.PKG_ARCH }}" }'
+
+      - name: Update Firmware Selector
+        run: curl -fsSL "${{ secrets.FWSELECTOR_REFRESH_URL }}${{ secrets.FWSELECTOR_REFRESH_TOKEN }}"
 
       - name: Report status to Telegram group
         if: ${{ always() }}
