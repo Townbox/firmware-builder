@@ -41,9 +41,8 @@ jobs:
       - name: Generate target list
         id: list_targets
         run: |
-          # FIXME: realtek is broken due to libnml.
           for TARGET in $(perl ./scripts/dump-target-info.pl targets 2>/dev/null | awk '{ print $1 }'); do \
-            grep -q "realtek" <<< "$TARGET" || TARGET_LIST="${TARGET_LIST:+$TARGET_LIST,}\"${TARGET}\""; \
+            TARGET_LIST="${TARGET_LIST:+$TARGET_LIST,}\"${TARGET}\""; \
           done
           JSON_LIST="{\"runner\": [\"ubuntu-latest\"],\"targets\":[$TARGET_LIST]}"
           echo "$JSON_LIST" | jq .
