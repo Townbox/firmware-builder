@@ -1,0 +1,43 @@
+#!/bin/bash
+# SPDX-License-Identifier: GPL-3.0-only
+#
+# Copyright (C) 2021 ImmortalWrt.org
+
+set -o pipefail
+
+export TOPDIR="$PWD"
+TMPDIR="$(make --no-print-directory val.TMP_DIR)/upload/"
+mkdir -p "$TMPDIR"
+
+BIN_DIR="$(make --no-print-directory -C target/linux val.BIN_DIR)"
+KMOD_DIR="$(make --no-print-directory -C target/linux val.LINUX_VERSION val.LINUX_RELEASE val.LINUX_VERMAGIC | tr '\n' '-' | head -c -1)"
+
+echo -e "Fetching remote sha256sums for target..."
+rsync -hvHP "rsync://${RSYNC_USER}@${RSYNC_ADDR}/${BUILDBOT_VERSION}-targets/$BUILDBOT_TARGET/$BUILDBOT_SUBTARGET/sha256sums" "$TMPDIR/target-sha256sums" || true
+
+echo -e "Signing sha256sums for target..."
+KEY_BUILD="$(make --no-print-directory -C target/linux val.BUILD_KEY)"
+STAGING_DIR_HOST="$(make --no-print-directory -C target/linux val.STAGING_DIR_HOST)"
+"$STAGING_DIR_HOST"/bin/usign -S -m "$BIN_DIR/sha256sums" -s "$KEY_BUILD"
+
+echo -e "Building list of files to upload..."
+"$GITHUB_WORKSPACE"/scripts/create_uplist "$TMPDIR/target-sha256sums" "$BIN_DIR/sha256sums" "$TMPDIR/rsynclist"
+
+echo -e "Uploading target files..."
+rsync --exclude="/kmods/" --files-from "$TMPDIR/rsynclist" --delay-updates --partial-dir=".~tmp~$BUILDBOT_TARGET~$BUILDBOT_SUBTARGET" -ahvHP "$BIN_DIR/" "rsync://${RSYNC_USER}@${RSYNC_ADDR}/${BUILDBOT_VERSION}-targets/$BUILDBOT_TARGET/$BUILDBOT_SUBTARGET/"
+
+echo -e "Pruning target files..."
+rsync --exclude="/kmods/" --delete --existing --ignore-existing --delay-updates --partial-dir=".~tmp~$BUILDBOT_TARGET~$BUILDBOT_SUBTARGET" -ahvHP "$BIN_DIR/" "rsync://${RSYNC_USER}@${RSYNC_ADDR}/${BUILDBOT_VERSION}-targets/$BUILDBOT_TARGET/$BUILDBOT_SUBTARGET/"
+
+echo -e "Preparing kmod directory..."
+rsync -ahvHP --include="/$KMOD_DIR/" --exclude="/*" --exclude="/$KMOD_DIR/*" "$BIN_DIR/kmods/" "rsync://${RSYNC_USER}@${RSYNC_ADDR}/${BUILDBOT_VERSION}-targets/$BUILDBOT_TARGET/$BUILDBOT_SUBTARGET/kmods/"
+
+echo -e "Uploading kmod archive..."
+rsync --delete --delay-updates --partial-dir=".~tmp~$BUILDBOT_TARGET~$BUILDBOT_SUBTARGET" -ahvHP "$BIN_DIR/kmods/$KMOD_DIR/" "rsync://${RSYNC_USER}@${RSYNC_ADDR}/${BUILDBOT_VERSION}-targets/$BUILDBOT_TARGET/$BUILDBOT_SUBTARGET/kmods/$KMOD_DIR/"
+
+echo -e "Finding source archives to upload..."
+DLDIR="$(make --no-print-directory val.DL_DIR)"
+find "$DLDIR/" -maxdepth 1 -type f -not -size 0 -not -name '.*' -not -name '*.hash' -not -name '*.dl' -printf '%f\n' > "$TMPDIR/sourcelist"
+
+echo -e "Uploading source archives..."
+rsync --files-from="$TMPDIR/sourcelist" --size-only --delay-updates --partial-dir=".~tmp~$BUILDBOT_TARGET~$BUILDBOT_SUBTARGET~$GITHUB_RUN_ID" -ahvHP "$TOPDIR/dl/" "rsync://${RSYNC_USER}@${RSYNC_ADDR}/dl/"

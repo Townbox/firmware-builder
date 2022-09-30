@@ -76,7 +76,7 @@ jobs:
           DEBIAN_FRONTEND: noninteractive
         run: |
           sudo -E apt -y update
-          sudo -E apt -y install build-essential asciidoc binutils bzip2 gawk gettext git libncurses5-dev libz-dev patch unzip zlib1g-dev lib32gcc1 libc6-dev-i386 flex uglifyjs gcc g++ gcc-multilib g++-multilib p7zip-full msmtp libssl-dev texinfo libreadline-dev libglib2.0-dev xmlto qemu-utils libelf-dev autoconf automake libtool autopoint curl wget python3 python3-pip python3-ply device-tree-compiler scons gperf sshpass rsync
+          sudo -E apt -y install build-essential asciidoc binutils bzip2 gawk gettext git libncurses5-dev libz-dev patch unzip zlib1g-dev lib32gcc1 libc6-dev-i386 flex uglifyjs gcc g++ gcc-multilib g++-multilib p7zip-full msmtp libssl-dev texinfo libreadline-dev libglib2.0-dev xmlto qemu-utils libelf-dev autoconf automake libtool autopoint curl wget python3 python3-pip python3-ply device-tree-compiler scons gperf rsync
           sudo -E pip3 install -U python-telegram-bot
           sudo -E apt -y clean
 
@@ -229,21 +229,12 @@ jobs:
         env:
           RSYNC_ADDR: ${{ secrets.RSYNC_ADDR }}
           RSYNC_USER: ${{ secrets.RSYNC_USER }}
-          RSYNC_PASS: ${{ secrets.RSYNC_PASS }}
+          RSYNC_PASSWORD: ${{ secrets.RSYNC_PASS }}
         run: |
           export TOPDIR="$PWD"
-          BIN_DIR="$(make --no-print-directory -C target/linux val.BIN_DIR)"
-          KMOD_DIR="$(make --no-print-directory -C target/linux val.LINUX_VERSION val.LINUX_RELEASE val.LINUX_VERMAGIC | tr '\n' '-' | head -c -1)"
           PKG_ARCH="$(make --no-print-directory -C target/linux val.ARCH_PACKAGES)"
           echo -e "PKG_ARCH=$PKG_ARCH" | tee -a "$GITHUB_ENV"
-
-          UL_TARGET="$(awk -F '/' '{print $(NF-1)}' <<< "$BIN_DIR")"
-          UL_SUBTARGET="$(awk -F '/' '{print $NF}' <<< "$BIN_DIR")"
-
-          sshpass -p "$RSYNC_PASS" rsync -ahv --delete --exclude "kmods" "$BIN_DIR" "rsync://${RSYNC_USER}@${RSYNC_ADDR}/${BUILDBOT_VERSION}-targets/$UL_TARGET/"
-          sshpass -p "$RSYNC_PASS" rsync -ahv --delete "$BIN_DIR/kmods/$KMOD_DIR" "rsync://${RSYNC_USER}@${RSYNC_ADDR}/${BUILDBOT_VERSION}-targets/$UL_TARGET/$UL_SUBTARGET/kmods/"
-
-          sshpass -p "$RSYNC_PASS" rsync -lhprvD --exclude "*cache*" "$TOPDIR/dl/" "rsync://${RSYNC_USER}@${RSYNC_ADDR}/dl/"
+          "$GITHUB_WORKSPACE"/scripts/upload_files
 
       - name: Update SDK docker image
         uses: benc-uk/workflow-dispatch@v1
