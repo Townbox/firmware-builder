@@ -46,7 +46,7 @@ jobs:
           done
           JSON_LIST="{\"runner\": [\"ubuntu-latest\"],\"targets\":[$TARGET_LIST]}"
           echo "$JSON_LIST" | jq .
-          echo "::set-output name=targets::$JSON_LIST"
+          echo "targets=$JSON_LIST" >> "$GITHUB_OUTPUT"
 
   build:
     name: Build firmware for ${{ matrix.targets }}
@@ -237,7 +237,7 @@ jobs:
           "$GITHUB_WORKSPACE"/scripts/upload_files
 
       - name: Update SDK docker image
-        uses: benc-uk/workflow-dispatch@v1
+        uses: scoremedia/workflow-dispatch@8b768d9b524f93971bb0330c8b27bd4009d1993c
         with:
           workflow: 'Build SDK images (trigger)'
           repo: 'immortalwrt/docker'
@@ -246,7 +246,7 @@ jobs:
           inputs: '{ "branch": "${{ env.BUILDBOT_BRANCH }}", "version": "${{ env.BUILDBOT_VERSION }}", "target": "${{ env.BUILDBOT_TARGET_SUBTARGET }}", "arch": "${{ env.PKG_ARCH }}" }'
 
       - name: Update IB docker image
-        uses: benc-uk/workflow-dispatch@v1
+        uses: scoremedia/workflow-dispatch@8b768d9b524f93971bb0330c8b27bd4009d1993c
         with:
           workflow: 'Build ImageBuilder images (trigger)'
           repo: 'immortalwrt/docker'
@@ -256,7 +256,7 @@ jobs:
 
       - name: Update rootfs docker image
         if: contains(fromJson('["armvirt-32", "armvirt-64", "malta-be", "x86-generic", "x86-geode", "x86-64"]'), env.BUILDBOT_TARGET_SUBTARGET)
-        uses: benc-uk/workflow-dispatch@v1
+        uses: scoremedia/workflow-dispatch@8b768d9b524f93971bb0330c8b27bd4009d1993c
         with:
           workflow: 'Build rootfs images (trigger)'
           repo: 'immortalwrt/docker'
