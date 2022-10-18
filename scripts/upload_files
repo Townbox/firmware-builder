@@ -12,6 +12,18 @@ mkdir -p "$TMPDIR"
 BIN_DIR="$(make --no-print-directory -C target/linux val.BIN_DIR)"
 KMOD_DIR="$(make --no-print-directory -C target/linux val.LINUX_VERSION val.LINUX_RELEASE val.LINUX_VERMAGIC | tr '\n' '-' | head -c -1)"
 
+echo -e "Preparing upload directory structure..."
+mkdir -p "$TMPDIR/remotedir/$BUILDBOT_TARGET/$BUILDBOT_SUBTARGET"
+
+# echo -e "Preparing repository symlink..."
+# [ "$BUILDBOT_BRANCH" == "master" ] || ln -sf "../packages-${BUILDBOT_BRANCH#openwrt-}" "$TMPDIR/remotedir/packages"
+
+echo -e "Preparing kmod directory..."
+mkdir -p "$TMPDIR/remotedir/$BUILDBOT_TARGET/$BUILDBOT_SUBTARGET/kmods/$KMOD_DIR"
+
+echo -e "Uploading directory structure..."
+rsync -avhHP "$TMPDIR/remotedir/" "rsync://${RSYNC_USER}@${RSYNC_ADDR}/${BUILDBOT_VERSION}-targets/"
+
 echo -e "Fetching remote sha256sums for target..."
 rsync -hvHP "rsync://${RSYNC_USER}@${RSYNC_ADDR}/${BUILDBOT_VERSION}-targets/$BUILDBOT_TARGET/$BUILDBOT_SUBTARGET/sha256sums" "$TMPDIR/target-sha256sums" || true
 
@@ -28,9 +40,6 @@ rsync --exclude="/kmods/" --files-from "$TMPDIR/rsynclist" --delay-updates --par
 
 echo -e "Pruning target files..."
 rsync --exclude="/kmods/" --delete --existing --ignore-existing --delay-updates --partial-dir=".~tmp~$BUILDBOT_TARGET~$BUILDBOT_SUBTARGET" -ahvHP "$BIN_DIR/" "rsync://${RSYNC_USER}@${RSYNC_ADDR}/${BUILDBOT_VERSION}-targets/$BUILDBOT_TARGET/$BUILDBOT_SUBTARGET/"
-
-echo -e "Preparing kmod directory..."
-rsync -ahvHP --include="/$KMOD_DIR/" --exclude="/*" --exclude="/$KMOD_DIR/*" "$BIN_DIR/kmods/" "rsync://${RSYNC_USER}@${RSYNC_ADDR}/${BUILDBOT_VERSION}-targets/$BUILDBOT_TARGET/$BUILDBOT_SUBTARGET/kmods/"
 
 echo -e "Uploading kmod archive..."
 rsync --delete --delay-updates --partial-dir=".~tmp~$BUILDBOT_TARGET~$BUILDBOT_SUBTARGET" -ahvHP "$BIN_DIR/kmods/$KMOD_DIR/" "rsync://${RSYNC_USER}@${RSYNC_ADDR}/${BUILDBOT_VERSION}-targets/$BUILDBOT_TARGET/$BUILDBOT_SUBTARGET/kmods/$KMOD_DIR/"
