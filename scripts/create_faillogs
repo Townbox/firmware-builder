@@ -1,0 +1,22 @@
+#!/bin/bash
+
+export TOPDIR="$PWD"
+LOGDIR="$(make --no-print-directory val.BUILD_LOG_DIR)"
+TMPDIR="$(make --no-print-directory val.TMP_DIR)/upload/"
+
+mkdir -p "$TMPDIR/faillogs/"
+touch "$TMPDIR/faillogs.txt"
+
+if [ -s "$LOGDIR/package/error.txt" ]; then
+	pushd "$LOGDIR/package"
+	cat "error.txt"
+	sed -ne 's!^ *ERROR: package/\([a-z]*/[^ ]*\) .*$!\1!p' "error.txt" | sort -u | xargs -r find > "$TMPDIR/faillogs.txt"
+	rsync -av --files-from="$TMPDIR/faillogs.txt" "$LOGDIR/package/" "$TMPDIR/faillogs/"
+	if [ -d "$TMPDIR/faillogs/feeds" ]; then
+		mv -f "$TMPDIR/faillogs/feeds"/* "$TMPDIR/faillogs/"
+		rm -rf "$TMPDIR/faillogs/feeds"
+	fi
+	popd
+fi
+
+exit 0

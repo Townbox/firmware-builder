@@ -218,18 +218,25 @@ jobs:
         run: |
           "$GITHUB_WORKSPACE"/scripts/create_kmods
 
-      - name: Print faillogs
+      - name: Create faillogs
         working-directory: '/immortalwrt/immortalwrt'
         run: |
-          [ ! -e "./logs/error.txt" ] || cat "./logs/error.txt"
-          [ ! -e "./logs/package/error.txt" ] || cat "./logs/package/error.txt"
+          "$GITHUB_WORKSPACE"/scripts/create_faillogs
+          [ ! -s "tmp/upload/faillogs.txt" ] || echo -e "BUILDBOT_HAS_FAILLOGS=true" | tee -a "$GITHUB_ENV"
+
+      - name: Upload faillogs
+        if: ${{ env.BUILDBOT_HAS_FAILLOGS }}
+        uses: actions/upload-artifact@v3
+        with:
+          name: '${{ env.BUILDBOT_TARGET_SUBTARGET }}-faillogs'
+          path: '/immortalwrt/immortalwrt/tmp/upload/faillogs'
 
       - name: Upload files
         working-directory: '/immortalwrt/immortalwrt'
         env:
-          RSYNC_ADDR: ${{ secrets.RSYNC_ADDR }}
-          RSYNC_USER: ${{ secrets.RSYNC_USER }}
-          RSYNC_PASSWORD: ${{ secrets.RSYNC_PASS }}
+          RSYNC_ADDR: '${{ secrets.RSYNC_ADDR }}'
+          RSYNC_USER: '${{ secrets.RSYNC_USER }}'
+          RSYNC_PASSWORD: '${{ secrets.RSYNC_PASS }}'
         run: |
           export TOPDIR="$PWD"
           PKG_ARCH="$(make --no-print-directory -C target/linux val.ARCH_PACKAGES)"
