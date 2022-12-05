@@ -3,6 +3,7 @@
 #
 # Copyright (C) 2021 ImmortalWrt.org
 
+set -o errexit
 set -o pipefail
 
 export TOPDIR="$PWD"
