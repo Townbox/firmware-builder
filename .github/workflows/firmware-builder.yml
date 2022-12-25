@@ -244,7 +244,7 @@ jobs:
           "$GITHUB_WORKSPACE"/scripts/upload_files
 
       - name: Update SDK docker image
-        uses: scoremedia/workflow-dispatch@8b768d9b524f93971bb0330c8b27bd4009d1993c
+        uses: benc-uk/workflow-dispatch@798e70c97009500150087d30d9f11c5444830385
         with:
           workflow: 'Build SDK images (trigger)'
           repo: 'immortalwrt/docker'
@@ -253,7 +253,7 @@ jobs:
           inputs: '{ "branch": "${{ env.BUILDBOT_BRANCH }}", "version": "${{ env.BUILDBOT_VERSION }}", "target": "${{ env.BUILDBOT_TARGET_SUBTARGET }}", "arch": "${{ env.PKG_ARCH }}" }'
 
       - name: Update IB docker image
-        uses: scoremedia/workflow-dispatch@8b768d9b524f93971bb0330c8b27bd4009d1993c
+        uses: benc-uk/workflow-dispatch@798e70c97009500150087d30d9f11c5444830385
         with:
           workflow: 'Build ImageBuilder images (trigger)'
           repo: 'immortalwrt/docker'
@@ -263,7 +263,7 @@ jobs:
 
       - name: Update rootfs docker image
         if: contains(fromJson('["armvirt-32", "armvirt-64", "malta-be", "x86-generic", "x86-geode", "x86-64"]'), env.BUILDBOT_TARGET_SUBTARGET)
-        uses: scoremedia/workflow-dispatch@8b768d9b524f93971bb0330c8b27bd4009d1993c
+        uses: benc-uk/workflow-dispatch@798e70c97009500150087d30d9f11c5444830385
         with:
           workflow: 'Build rootfs images (trigger)'
           repo: 'immortalwrt/docker'
