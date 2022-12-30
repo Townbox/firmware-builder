@@ -165,6 +165,9 @@ jobs:
             echo -e "CONFIG_VERSIONOPT=y" | tee -a ".config" ; \
           fi
 
+          grep -iq "snapshot" <<< "$BUILBOT_VERSION" || \
+            echo -e "CONFIG_PACKAGE_luci-app-attendedsysupgrade=y" | tee -a ".config"
+
           make defconfig
 
       - name: Build tools
