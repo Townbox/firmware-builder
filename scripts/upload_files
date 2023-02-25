@@ -50,4 +50,4 @@ DLDIR="$(make --no-print-directory val.DL_DIR)"
 find "$DLDIR/" -maxdepth 1 -type f -not -size 0 -not -name '.*' -not -name '*.hash' -not -name '*.dl' -printf '%f\n' > "$TMPDIR/sourcelist"
 
 echo -e "Uploading source archives..."
-rsync --files-from="$TMPDIR/sourcelist" --size-only --delay-updates --partial-dir=".~tmp~$BUILDBOT_TARGET~$BUILDBOT_SUBTARGET~$GITHUB_RUN_ID" -ahvHP "$TOPDIR/dl/" "rsync://${RSYNC_USER}@${RSYNC_ADDR}/dl/"
+rsync --files-from="$TMPDIR/sourcelist" --size-only --delay-updates --partial-dir=".~tmp~$BUILDBOT_TARGET~$BUILDBOT_SUBTARGET~$GITHUB_RUN_ID" -ahvHP "$TOPDIR/dl/" "rsync://${RSYNC_USER}@${RSYNC_DL_ADDR}/dl/"

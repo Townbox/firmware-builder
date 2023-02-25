@@ -243,6 +243,7 @@ jobs:
         working-directory: '/immortalwrt/immortalwrt'
         env:
           RSYNC_ADDR: '${{ secrets.RSYNC_ADDR }}'
+          RSYNC_DL_ADDR: '${{ secrets.RSYNC_DL_ADDR }}'
           RSYNC_USER: '${{ secrets.RSYNC_USER }}'
           RSYNC_PASSWORD: '${{ secrets.RSYNC_PASS }}'
         run: |
